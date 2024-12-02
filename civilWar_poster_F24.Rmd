@@ -1,0 +1,41 @@
+---
+title: "civilWar_poster_F24"
+output: html_document
+date: "2024-12-02"
+---
+## Data Pre-processing and Exploratory Data Analysis
+
+```{r}
+suppressMessages(library(tidyverse))
+
+df <- read.csv("civilWar.csv",stringsAsFactors = TRUE) 
+df <- na.omit(df) #remove observations that are missing predictor values
+
+summary(df)
+```
+
+
+```{r}
+#quantitative variables are grouped together and visualized
+
+df.quant <- df %>% select(.,exports,schooling,growth,concentration,lnpop,fractionalization) %>% gather(.)
+
+ggplot(data=df.quant,mapping=aes(x=value)) + 
+  geom_histogram(fill="blue") + 
+  facet_wrap(~key,scales='free')
+```
+
+```{r}
+#qualitative variables are grouped together and visualized 
+
+df.qual <- df %>% select(.,dominance,civil.war) %>% gather(.)
+
+ggplot(data=df.qual,mapping=aes(x=value)) +
+geom_bar(fill="blue") + 
+  facet_wrap(~key,scales='free')
+
+```
+
+```{r}
+
+```
