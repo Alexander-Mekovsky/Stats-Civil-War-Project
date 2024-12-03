@@ -1,18 +1,149 @@
 ---
 title: "R Notebook"
 output: html_notebook
+editor_options: 
+  chunk_output_type: console
 ---
+loadding the libraries and load the data 
 
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+```{r reading_data}
+suppressMessages(library(dplyr))
+suppressMessages(library(tidyverse))
 
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+library(dplyr)
+library(tidyr)
+library(ggplot2)
 
-```{r}
-print("test")
+df <- read_csv("data/civilWar.csv")
+# summarize the data to check for ouliers 
+summary(df)
+#check fi there is nas in the dataset
+sum(is.na(df))
+#The data do not hace any outlier
+
+head(df)
 ```
 
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
 
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+# Creating an histogram of the data to check on the data distribution 
 
-The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+ The histogram shows Right-skewed Schooling with extreme range.I personaly request to tramsform this predictor however it will depend to the model performence result.
+```{r creating_histogram}
+df_cleaned <- df %>%
+  select(-c(dominance, civil.war)) %>% # removing th ecategorical data 
+  pivot_longer(
+    cols = everything(),
+    names_to = "variable",
+    values_to = "value"
+  )
+
+# Assuming df is your original dataframe
+df_cleaned <- df %>%
+  select(-c(dominance, civil.war)) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "variable",
+    values_to = "value"
+  )
+
+# Creating histograms 
+
+plot <- ggplot(df_cleaned, aes(x = value,fill = variable)) + 
+  geom_histogram(bins = 10) + 
+  facet_wrap(~ variable, scales = "free_x") +
+  theme_minimal() +
+  theme(
+    
+    panel.grid.major = element_blank(), # remove major grid lines
+    panel.grid.minor = element_blank()  # remove minor grid lines
+  ) +
+  labs(x = NULL, y = "Frequency") +
+	theme(legend.title = element_blank(),legend.position = "top",legend.direction = "horizontal")
+
+print(plot)
+
+
+
+```
+
+
+Transforming the predictor variable "Schooling "
+
+```{r}
+df$schooling <- sqrt(df$schooling)		 # transforming the scholing predictor
+df_cleaned <- df %>%
+  select(-c(dominance, civil.war)) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "variable",
+    values_to = "value"
+  )
+
+# Creating histograms 
+
+plot <- ggplot(df_cleaned, aes(x = value,fill = variable)) + 
+  geom_histogram(bins = 10) + 
+  facet_wrap(~ variable, scales = "free_x") +
+  theme_minimal() +
+  theme(
+    
+    panel.grid.major = element_blank(), # remove major grid lines
+    panel.grid.minor = element_blank()  # remove minor grid lines
+  ) +
+  labs(x = NULL, y = "Frequency") +
+	theme(legend.title = element_blank(),legend.position = "top",legend.direction = "horizontal")
+
+print(plot)
+
+```
+
+# Target (categorical varible) Variable Distribution analysis
+
+```{r target-distribution}
+df_targeted <- df %>% 
+  select(civil.war, dominance) %>% 
+  pivot_longer(
+    names_to = "variable", 
+    values_to = "value", 
+    cols = everything()
+  )
+
+ggplot(df_targeted) +
+  geom_bar(aes(x = variable, fill = value)) +
+  scale_fill_manual(values = c("NO" = "green", "YES" = "red")) +
+  ggtitle("Distribution of Civil War Occurrence and Dominance") +
+  xlab("Variables") +
+  ylab("Count") +
+  theme(
+    panel.grid.major = element_blank(), # remove major grid lines
+    panel.grid.minor = element_blank(), # remove minor grid lines
+    panel.background = element_blank(), # remove background
+    axis.line = element_line(color = "black"), # add axis lines
+    legend.position = c(0.6, 0.5),
+    legend.title = element_blank() # remove legend title
+  )
+
+
+```
+
+# Pairplot of Numerical Features
+In this plot, we are analyzing the correlation between pairs of predictors. A strong correlation indicates a high probability of col linearity between the predictors, which would need to be addressed.
+
+The pair plot below shows that there is no strong correlation between the predictors, indicating an absence of collinearity or redundancy among the predictors in the dataset.
+
+```{r pairplot}
+pairs(df[, c("exports", "schooling", "growth", "concentration", "lnpop", "fractionalization")],
+      main = "Pairplot of Numerical Features",
+      col = ifelse(df$civil.war == "YES", "red", "blue"))
+```
+
+# Correlation Heatmap
+
+similary the corplot is relating different predictors and can assist in verfying hte colinearility, an looks like a best way to assess the colineality in data sets.
+
+```{r correlation-heatmap}
+library(corrplot)
+num_features <- df[, c('exports', 'schooling', 'growth', 'concentration', 'lnpop', 'fractionalization')]
+cor_matrix <- cor(num_features, use = "complete.obs")
+corrplot(cor_matrix, method = "circle", type = "lower", tl.col = "black", tl.srt = 45)
+```
