@@ -147,3 +147,51 @@ num_features <- df[, c('exports', 'schooling', 'growth', 'concentration', 'lnpop
 cor_matrix <- cor(num_features, use = "complete.obs")
 corrplot(cor_matrix, method = "circle", type = "lower", tl.col = "black", tl.srt = 45)
 ```
+
+# Split data into training and test dataset
+
+```{r split dataset}
+set.seed(123)
+train_idx <- createDataPartition(df$civil.war, p = 0.7, list = FALSE)
+train <- df[train_idx, ]
+test <- df[-train_idx, ]
+```
+# Logistic regression
+```{r logistic regression}
+log_mdl <- glm(civil.war ~ ., data = train, family = binomial)
+log_probs <- predict(log_mdl, newdata = test, type = "response")
+roc_log <- roc(test$civil.war, log_probs)
+auc_log <- auc(roc_log)
+threshold_log <- as.numeric(coords(roc_log, "best", ret = "threshold", best.method = "youden")[1])
+
+log_pred_class <- ifelse(log_probs > threshold_log, "YES", "NO")
+# Missclassification rate
+mcr_log <- mean(log_pred_class != test$civil.war)
+```
+```{r summary logistic regression}
+summary(log_mdl)
+```
+# Disaply logistic regression results
+```{r results}
+cat("AUC (logistic regression):", round(auc_log, 3), "\n")
+cat("MCR (logistic regression):", round(mcr_log, 3), "\n")
+```
+# Show the confusion matrix
+```{r confusion matrix}
+log_conf_matrix <- table(Predicted = log_pred_class, Actual = test$civil.war)
+print(log_conf_matrix)
+```
+
+# Calculate metrics
+```{r metrics}
+
+accuracy <- sum(diag(conf_matrix)) / sum(conf_matrix)
+precision <- conf_matrix["YES", "YES"] / sum(conf_matrix["YES", ])
+recall <- conf_matrix["YES", "YES"] / sum(conf_matrix[, "YES"])
+f1_score <- 2 * (precision * recall) / (precision + recall)
+
+cat("Logistic regression:","\n","Accuracy:", round(accuracy, 3), "\n")
+cat("Precision:", round(precision, 3), "\n")
+cat("Recall:", round(recall, 3), "\n")
+cat("F1 Score:", round(f1_score, 3), "\n")
+```
