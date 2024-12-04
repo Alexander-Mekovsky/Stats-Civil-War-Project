@@ -150,14 +150,14 @@ corrplot(cor_matrix, method = "circle", type = "lower", tl.col = "black", tl.srt
 
 # Split data into training and test dataset
 
-```{r split dataset}
+```{r split-dataset}
 set.seed(123)
 train_idx <- createDataPartition(df$civil.war, p = 0.7, list = FALSE)
 train <- df[train_idx, ]
 test <- df[-train_idx, ]
 ```
 # Logistic regression
-```{r logistic regression}
+```{r logistic-regression}
 log_mdl <- glm(civil.war ~ ., data = train, family = binomial)
 log_probs <- predict(log_mdl, newdata = test, type = "response")
 roc_log <- roc(test$civil.war, log_probs)
@@ -177,7 +177,7 @@ cat("AUC (logistic regression):", round(auc_log, 3), "\n")
 cat("MCR (logistic regression):", round(mcr_log, 3), "\n")
 ```
 # Show the confusion matrix
-```{r confusion matrix}
+```{r confusion-matrix}
 log_conf_matrix <- table(Predicted = log_pred_class, Actual = test$civil.war)
 print(log_conf_matrix)
 ```
