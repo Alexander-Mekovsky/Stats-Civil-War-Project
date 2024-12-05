@@ -1,7 +1,9 @@
 ---
 title: "R Notebook"
-output: html_notebook
-editor_options: 
+output:
+  html_document:
+    df_print: paged
+editor_options:
   chunk_output_type: console
 ---
 loadding the libraries and load the data 
@@ -151,13 +153,18 @@ corrplot(cor_matrix, method = "circle", type = "lower", tl.col = "black", tl.srt
 # Split data into training and test dataset
 
 ```{r split-dataset}
+df$civil.war <- factor(df$civil.war, levels = c("NO", "YES"))
+df$dominance <- factor(df$dominance, levels = c("NO", "YES"))
+
 set.seed(123)
-train_idx <- createDataPartition(df$civil.war, p = 0.7, list = FALSE)
+train_idx <- sample(nrow(df),round(0.7*nrow(df)))
 train <- df[train_idx, ]
 test <- df[-train_idx, ]
 ```
 # Logistic regression
 ```{r logistic-regression}
+suppressMessages(library(pROC))
+
 log_mdl <- glm(civil.war ~ ., data = train, family = binomial)
 log_probs <- predict(log_mdl, newdata = test, type = "response")
 roc_log <- roc(test$civil.war, log_probs)
@@ -184,7 +191,7 @@ print(log_conf_matrix)
 
 # Calculate metrics
 ```{r metrics}
-
+conf_matrix <- log_conf_matrix
 accuracy <- sum(diag(conf_matrix)) / sum(conf_matrix)
 precision <- conf_matrix["YES", "YES"] / sum(conf_matrix["YES", ])
 recall <- conf_matrix["YES", "YES"] / sum(conf_matrix[, "YES"])
@@ -194,4 +201,150 @@ cat("Logistic regression:","\n","Accuracy:", round(accuracy, 3), "\n")
 cat("Precision:", round(precision, 3), "\n")
 cat("Recall:", round(recall, 3), "\n")
 cat("F1 Score:", round(f1_score, 3), "\n")
+```
+
+## Scaled Logistic 
+
+Scale the numerical variables and check the coefficients to find important predictors.
+
+```{r}
+df.train <- train
+
+# Standardize numerical variables
+df.train$exports <- scale(df.train$exports)
+df.train$schooling <- scale(df.train$schooling)
+df.train$growth <- scale(df.train$growth)
+df.train$concentration <- scale(df.train$concentration)
+df.train$lnpop <- scale(df.train$lnpop)
+df.train$fractionalization <- scale(df.train$fractionalization)
+
+# Fit a new logistic regression model
+model_scaled <- glm(civil.war ~ ., data = df.train, family = binomial)
+
+# Summary of the scaled model
+summary(model_scaled)
+```
+```
+'schooling' and 'lnpop' here are important.
+```
+
+
+## Random Forest
+
+```{r}
+set.seed(408)
+
+suppressMessages(library(randomForest))
+suppressMessages(library(pROC))
+
+df.train <- train
+
+# AUC value
+rf.out = randomForest(civil.war ~ ., data=df.train,importance=TRUE)
+out.pred = predict(rf.out,newdata=test,type="prob")[,2]
+roc_obj <- roc(test$civil.war, out.pred)  
+auc_value <- auc(roc_obj)
+print(paste("Random Forest AUC:", round(auc_value, 3)))
+
+# Youden’s J
+optimal_threshold <- coords(roc_obj, "best", ret="threshold", best.method="youden")
+print(paste("Random Forest Optimal Threshold:", round(optimal_threshold, 3)))
+
+# MCR and confusion matrix
+resp.pred <- ifelse(out.pred >= as.numeric(optimal_threshold), "YES","NO")
+resp.test = test$civil.war
+cat('Random Forest MCR: ',mean(resp.pred!=resp.test),'\n') 
+tab <- table(resp.pred,resp.test)
+print(tab)
+```
+
+
+## Importance plot
+
+Create an importance plot to see the important variables given by our random forest model.
+
+```{r}
+varImpPlot(rf.out,type=1)
+```
+```
+'lnpop' is important here again.
+```
+
+## Trees
+
+Try (pruned) trees to visuailize the classification process.
+
+```{r}
+library(rpart)
+
+df.train <- train
+df.test <- test
+
+# AUC value
+rpart.out <- rpart(civil.war~.,data=df.train)
+resp.pred <- predict(rpart.out,newdata=df.test,type="prob")[,2]
+roc_obj <- roc(df.test$civil.war, resp.pred)  
+auc_value <- auc(roc_obj)
+print(paste("Tree AUC:", round(auc_value, 3)))
+
+# Youden’s J
+optimal_threshold <- coords(roc_obj, "best", ret="threshold", best.method="youden")
+print(paste("Tree Optimal Threshold:", round(optimal_threshold, 3)))
+
+# MCR and confusion matrix
+resp.pred <- ifelse(resp.pred >= as.numeric(optimal_threshold), "YES","NO")
+resp.test = df.test$civil.war
+cat('Tree MCR: ',mean(resp.pred!=resp.test),'\n') 
+tab <- table(resp.pred,resp.test)
+print(tab)
+```
+
+```{r}
+# visualization
+library(rpart.plot)
+
+rpart.pruned <- prune(rpart.out,cp=0.03)
+rpart.plot(rpart.pruned,extra=104)
+```
+```
+We can draw a conclusion here that 'lnpop' is the most important variable here. As long as lnpop < 17, a civil war is almost impossible to occur(70% vs. 2%). This simple method of judgment can cover ～70% of the cases in our training set. 
+```
+
+## SVM
+
+Try SVM.
+
+```{r}
+set.seed(408)
+
+suppressMessages(library(e1071))
+
+df.train <- train
+df.test <- test
+
+tune.out <- tune(svm, 
+                 civil.war ~ ., 
+                 data = df.train, 
+                 kernel = "linear", 
+                 ranges = list(cost = 10^seq(-2, 0, by = 0.1)),
+                 probability = TRUE)
+best.model <- tune.out$best.model
+resp.pred <- predict(best.model, newdata = df.test, probability = TRUE)
+prob.attr <- attr(resp.pred, "probabilities")
+resp.prob <- prob.attr[, "YES"] 
+
+# Compute AUC
+roc_obj <- roc(df.test$civil.war, resp.prob)
+auc_value <- auc(roc_obj)
+print(paste("SVM (Linear Kernel) AUC:", round(auc_value, 3)))
+
+# Youden's J for optimal threshold
+optimal_threshold <- coords(roc_obj, "best", ret = "threshold", best.method = "youden")
+print(paste("SVM Optimal Threshold:", round(optimal_threshold, 3)))
+
+# MCR and confusion matrix
+final_predictions <- ifelse(resp.prob >= as.numeric(optimal_threshold), "YES", "NO")
+cat("SVM MCR:", mean(final_predictions != df.test$civil.war), "\n")
+conf_matrix <- table(Predicted = final_predictions, Actual = df.test$civil.war)
+print(conf_matrix)
 ```
