@@ -6,7 +6,8 @@ output:
 editor_options:
   chunk_output_type: console
 ---
-loadding the libraries and load the data 
+
+loadding the libraries and load the data
 
 ```{r reading_data}
 suppressMessages(library(dplyr))
@@ -16,7 +17,7 @@ library(dplyr)
 library(tidyr)
 library(ggplot2)
 
-df <- read_csv("data/civilWar.csv")
+df <- read_csv("civilWar.csv")
 # summarize the data to check for ouliers 
 summary(df)
 #check fi there is nas in the dataset
@@ -26,10 +27,10 @@ sum(is.na(df))
 head(df)
 ```
 
+# Creating an histogram of the data to check on the data distribution
 
-# Creating an histogram of the data to check on the data distribution 
+The histogram shows Right-skewed Schooling with extreme range.I personaly request to tramsform this predictor however it will depend to the model performence result.
 
- The histogram shows Right-skewed Schooling with extreme range.I personaly request to tramsform this predictor however it will depend to the model performence result.
 ```{r creating_histogram}
 df_cleaned <- df %>%
   select(-c(dominance, civil.war)) %>% # removing th ecategorical data 
@@ -67,7 +68,6 @@ print(plot)
 
 
 ```
-
 
 Transforming the predictor variable "Schooling "
 
@@ -129,6 +129,7 @@ ggplot(df_targeted) +
 ```
 
 # Pairplot of Numerical Features
+
 In this plot, we are analyzing the correlation between pairs of predictors. A strong correlation indicates a high probability of col linearity between the predictors, which would need to be addressed.
 
 The pair plot below shows that there is no strong correlation between the predictors, indicating an absence of collinearity or redundancy among the predictors in the dataset.
@@ -161,7 +162,9 @@ train_idx <- sample(nrow(df),round(0.7*nrow(df)))
 train <- df[train_idx, ]
 test <- df[-train_idx, ]
 ```
+
 # Logistic regression
+
 ```{r logistic-regression}
 suppressMessages(library(pROC))
 
@@ -175,25 +178,31 @@ log_pred_class <- ifelse(log_probs > threshold_log, "YES", "NO")
 # Missclassification rate
 mcr_log <- mean(log_pred_class != test$civil.war)
 ```
+
 ```{r summary logistic regression}
 summary(log_mdl)
 ```
-```
+
+```         
 'schooling', 'growth', 'lnpop', and 'dominance=Yes' are statistically significant in predicting the likelihood of civil war, with 'lnpop' and 'dominance=YES' positively associated, while 'schooling' and 'growth' are negatively associated. 
 ```
 
 # Disaply logistic regression results
+
 ```{r results}
 cat("AUC (logistic regression):", round(auc_log, 3), "\n")
 cat("MCR (logistic regression):", round(mcr_log, 3), "\n")
 ```
+
 # Show the confusion matrix
+
 ```{r confusion-matrix}
 log_conf_matrix <- table(Predicted = log_pred_class, Actual = test$civil.war)
 print(log_conf_matrix)
 ```
 
 # Calculate metrics
+
 ```{r metrics}
 conf_matrix <- log_conf_matrix
 accuracy <- sum(diag(conf_matrix)) / sum(conf_matrix)
@@ -207,7 +216,7 @@ cat("Recall:", round(recall, 3), "\n")
 cat("F1 Score:", round(f1_score, 3), "\n")
 ```
 
-## Scaled Logistic 
+# Scaled Logistic
 
 Scale the numerical variables and check the coefficients to find important predictors.
 
@@ -228,12 +237,12 @@ model_scaled <- glm(civil.war ~ ., data = df.train, family = binomial)
 # Summary of the scaled model
 summary(model_scaled)
 ```
-```
+
+```         
 'schooling' and 'lnpop' here are important.
 ```
 
-
-## Random Forest
+# Random Forest
 
 ```{r}
 set.seed(408)
@@ -246,12 +255,12 @@ df.train <- train
 # AUC value
 rf.out = randomForest(civil.war ~ ., data=df.train,importance=TRUE)
 out.pred = predict(rf.out,newdata=test,type="prob")[,2]
-roc_obj <- roc(test$civil.war, out.pred)  
-auc_value <- auc(roc_obj)
-print(paste("Random Forest AUC:", round(auc_value, 3)))
+roc_rf <- roc(test$civil.war, out.pred)  
+auc_rf <- auc(roc_rf)
+print(paste("Random Forest AUC:", round(auc_rf, 3)))
 
 # Youden’s J
-optimal_threshold <- coords(roc_obj, "best", ret="threshold", best.method="youden")
+optimal_threshold <- coords(roc_rf, "best", ret="threshold", best.method="youden")
 print(paste("Random Forest Optimal Threshold:", round(optimal_threshold, 3)))
 
 # MCR and confusion matrix
@@ -262,19 +271,19 @@ tab <- table(resp.pred,resp.test)
 print(tab)
 ```
 
-
-## Importance plot
+# Importance plot
 
 Create an importance plot to see the important variables given by our random forest model.
 
 ```{r}
-varImpPlot(rf.out,type=1)
+varImpPlot(rf.out,type=1, main = "Variable Importance")
 ```
-```
+
+```         
 'lnpop' is important here again.
 ```
 
-## Trees
+# Trees
 
 Try (pruned) trees to visuailize the classification process.
 
@@ -287,12 +296,12 @@ df.test <- test
 # AUC value
 rpart.out <- rpart(civil.war~.,data=df.train)
 resp.pred <- predict(rpart.out,newdata=df.test,type="prob")[,2]
-roc_obj <- roc(df.test$civil.war, resp.pred)  
-auc_value <- auc(roc_obj)
-print(paste("Tree AUC:", round(auc_value, 3)))
+roc_dt <- roc(df.test$civil.war, resp.pred)  
+auc_dt <- auc(roc_dt)
+print(paste("Tree AUC:", round(auc_dt, 3)))
 
 # Youden’s J
-optimal_threshold <- coords(roc_obj, "best", ret="threshold", best.method="youden")
+optimal_threshold <- coords(roc_dt, "best", ret="threshold", best.method="youden")
 print(paste("Tree Optimal Threshold:", round(optimal_threshold, 3)))
 
 # MCR and confusion matrix
@@ -310,11 +319,12 @@ library(rpart.plot)
 rpart.pruned <- prune(rpart.out,cp=0.03)
 rpart.plot(rpart.pruned,extra=104)
 ```
-```
+
+```         
 We can draw a conclusion here that 'lnpop' is the most important variable here. As long as lnpop < 17, a civil war is almost impossible to occur(70% vs. 2%). This simple method of judgment can cover ～70% of the cases in our training set. 
 ```
 
-## SVM
+# SVM
 
 Try SVM.
 
@@ -338,12 +348,12 @@ prob.attr <- attr(resp.pred, "probabilities")
 resp.prob <- prob.attr[, "YES"] 
 
 # Compute AUC
-roc_obj <- roc(df.test$civil.war, resp.prob)
-auc_value <- auc(roc_obj)
-print(paste("SVM (Linear Kernel) AUC:", round(auc_value, 3)))
+roc_svm <- roc(df.test$civil.war, resp.prob)
+auc_svm <- auc(roc_svm)
+print(paste("SVM (Linear Kernel) AUC:", round(auc_svm, 3)))
 
 # Youden's J for optimal threshold
-optimal_threshold <- coords(roc_obj, "best", ret = "threshold", best.method = "youden")
+optimal_threshold <- coords(roc_svm, "best", ret = "threshold", best.method = "youden")
 print(paste("SVM Optimal Threshold:", round(optimal_threshold, 3)))
 
 # MCR and confusion matrix
@@ -352,3 +362,78 @@ cat("SVM MCR:", mean(final_predictions != df.test$civil.war), "\n")
 conf_matrix <- table(Predicted = final_predictions, Actual = df.test$civil.war)
 print(conf_matrix)
 ```
+
+# KNN 
+```{r}
+# Load the class library for KNN
+library(class)
+
+# Scale the predictors; KNN works better when features are on the same scale
+train_scaled <- scale(train[,-which(names(train) %in% c("civil.war", "dominance"))])
+test_scaled <- scale(test[,-which(names(test) %in% c("civil.war", "dominance"))])
+
+# Ensure the target variable is a factor
+train_labels <- as.factor(train$civil.war)
+test_labels <- as.factor(test$civil.war)
+
+# Choose a value for k; often chosen via cross-validation
+k_value <- 5
+
+# Fit KNN model
+knn_pred <- knn(train = train_scaled, test = test_scaled, cl = train_labels, k = k_value, prob = TRUE)
+
+# Extract class probabilities
+knn_probs <- attr(knn_pred, "prob")
+knn_probs <- ifelse(knn_pred == "YES", knn_probs, 1 - knn_probs)
+
+# Compute ROC and AUC
+library(pROC)
+roc_knn <- roc(test_labels, knn_probs)
+auc_knn <- auc(roc_knn)
+
+```
+
+
+# AUC comparison table
+```{r}
+
+# Create a data frame to store AUC scores
+model_aucs <- data.frame(
+  Model = c("Logistic Regression", "Random Forest", "SVM", "Decision Trees", "KNN"),
+  AUC = c(auc_log, auc_rf, auc_svm, auc_dt, auc_knn)
+)
+
+# Print the table
+print(model_aucs)
+
+```
+
+# Overlay all ROC curves
+```{r}
+library(ggplot2)
+library(pROC)
+
+# Create data frames for each ROC curve with specificity, sensitivity, and model label
+roc_data_log <- data.frame(Specificity=1 - roc_log$specificities, Sensitivity=roc_log$sensitivities, Model="Logistic Regression")
+roc_data_rf <- data.frame(Specificity=1 - roc_rf$specificities, Sensitivity=roc_rf$sensitivities, Model="Random Forest")
+roc_data_svm <- data.frame(Specificity=1 - roc_svm$specificities, Sensitivity=roc_svm$sensitivities, Model="SVM")
+roc_data_dt <- data.frame(Specificity=1 - roc_dt$specificities, Sensitivity=roc_dt$sensitivities, Model="Decision Trees")
+roc_data_knn <- data.frame(Specificity=1 - roc_knn$specificities, Sensitivity=roc_knn$sensitivities, Model="KNN")
+
+# Combine all data frames into one
+roc_data <- rbind(roc_data_log, roc_data_rf, roc_data_svm, roc_data_dt, roc_data_knn)
+
+roc_plot <- ggplot(roc_data, aes(x = Specificity, y = Sensitivity, color = Model)) +
+  geom_line() +
+  labs(title = "ROC Curve Comparison",
+       x = "1 - Specificity (False Positive Rate)",
+       y = "Sensitivity (True Positive Rate)") +
+  scale_color_brewer(palette = "Set1", name = "Model") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+print(roc_plot)
+
+
+```
+
