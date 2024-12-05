@@ -178,6 +178,10 @@ mcr_log <- mean(log_pred_class != test$civil.war)
 ```{r summary logistic regression}
 summary(log_mdl)
 ```
+```
+'schooling', 'growth', 'lnpop', and 'dominance=Yes' are statistically significant in predicting the likelihood of civil war, with 'lnpop' and 'dominance=YES' positively associated, while 'schooling' and 'growth' are negatively associated. 
+```
+
 # Disaply logistic regression results
 ```{r results}
 cat("AUC (logistic regression):", round(auc_log, 3), "\n")
