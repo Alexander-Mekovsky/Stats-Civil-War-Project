@@ -18,6 +18,7 @@ summary(df)
 ```{r}
 #quantitative variables are grouped together and visualized
 
+
 df.quant <- df %>% select(.,exports,schooling,growth,concentration,lnpop,fractionalization) %>% gather(.)
 
 ggplot(data=df.quant,mapping=aes(x=value)) + 
