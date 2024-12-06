@@ -22,9 +22,9 @@ library(ggplot2)
 df <- read_csv("civilWar.csv")
 # summarize the data to check for ouliers 
 summary(df)
-#check fi there is nas in the dataset
+#check if there is NA in the dataset
 sum(is.na(df))
-#The data do not hace any outlier
+#The data do not have any outlier
 
 head(df)
 ```
@@ -74,7 +74,7 @@ print(plot)
 Transforming the predictor variable "Schooling "
 
 ```{r}
-df$schooling <- sqrt(df$schooling)		 # transforming the scholing predictor
+df$schooling <- sqrt(df$schooling)		 # transforming the schooling predictor
 df_cleaned <- df %>%
   select(-c(dominance, civil.war)) %>%
   pivot_longer(
@@ -87,13 +87,16 @@ df_cleaned <- df %>%
 
 plot <- ggplot(df_cleaned, aes(x = value,fill = variable)) + 
   geom_histogram(bins = 10) + 
+	labs(title = "distribuition of Cival war Predictors") +
   facet_wrap(~ variable, scales = "free_x") +
   theme_minimal() +
   theme(
     
-    panel.grid.major = element_blank(), # remove major grid lines
-    panel.grid.minor = element_blank()  # remove minor grid lines
-  ) +
+    panel.grid.major = element_blank(), 
+    panel.grid.minor = element_blank(), 
+  	axis.text = element_text(size = 14, face = "bold"),    # Increase and bold axis text
+    axis.title = element_text(size = 16, face = "bold")    # Increase and bold axis titles
+   ) +
   labs(x = NULL, y = "Frequency") +
 	theme(legend.title = element_blank(),legend.position = "top",legend.direction = "horizontal")
 
@@ -104,28 +107,33 @@ print(plot)
 # Target (categorical varible) Variable Distribution analysis
 
 ```{r target-distribution}
-df_targeted <- df %>% 
-  select(civil.war, dominance) %>% 
-  pivot_longer(
-    names_to = "variable", 
-    values_to = "value", 
-    cols = everything()
+# Create the plot for dominance filled by civil.war
+
+
+plot2 <- ggplot(df, aes(x = dominance, fill = civil.war)) + 
+  scale_fill_manual(values = c("NO" = "green", "YES" = "red")) +
+  geom_bar(position = "stack") + 
+  theme_minimal() +
+  theme(
+    panel.grid.major = element_blank(), 
+    panel.grid.minor = element_blank(), 
+    legend.title = element_text(size = 12, face = "bold"), 
+    legend.position = "top",            
+    legend.direction = "horizontal",    
+    axis.text = element_text(size = 14, face = "bold"),    # Increase and bold axis text
+    axis.title = element_text(size = 16, face = "bold")    # Increase and bold axis titles
+  ) +
+  labs(
+    title = "Influence of Ethnic Dominance on Civil War Occurrence", 
+    x = "Dominance", 
+    y = "Count",
+    fill = "Civil War Status" 
   )
 
-ggplot(df_targeted) +
-  geom_bar(aes(x = variable, fill = value)) +
-  scale_fill_manual(values = c("NO" = "green", "YES" = "red")) +
-  ggtitle("Distribution of Civil War Occurrence and Dominance") +
-  xlab("Variables") +
-  ylab("Count") +
-  theme(
-    panel.grid.major = element_blank(), # remove major grid lines
-    panel.grid.minor = element_blank(), # remove minor grid lines
-    panel.background = element_blank(), # remove background
-    axis.line = element_line(color = "black"), # add axis lines
-    legend.position = c(0.6, 0.5),
-    legend.title = element_blank() # remove legend title
-  )
+# Print the plot
+print(plot2)
+
+
 
 
 ```
@@ -279,11 +287,24 @@ Create an importance plot to see the important variables given by our random for
 
 ```{r}
 #varImpPlot(rf.out,type=1, main = "Variable Importance")
+library(ggplot2)
 
-importance_data <- as.data.frame(importance(rf.out))
-importance_data$Variable <- rownames(importance_data)
+ggplot(importance_data, aes(x = MeanDecreaseAccuracy, y = reorder(Variable, MeanDecreaseAccuracy))) + 
+  geom_bar(stat = "identity", size = 2, fill = "red") + 
+  theme_minimal() + 
+  labs(
+    title = "Variable Importance", 
+    x = "Mean Decrease in Accuracy", 
+    y = "Variable"
+  ) + 
+  xlim(0, 40) + 
+  theme(
+    panel.grid.major = element_blank(), # Remove major grid lines
+    panel.grid.minor = element_blank(), # Remove minor grid lines
+    axis.text = element_text(size = 14, face = "bold"), # Increase and bold axis text
+    axis.title = element_text(size = 16, face = "bold") # Increase and bold axis titles
+  )
 
-ggplot(importance_data, aes(x = MeanDecreaseAccuracy, y = reorder(Variable, MeanDecreaseAccuracy))) + geom_point(size = 4, color = "red") + theme_minimal() + labs(title = "Variable Importance", x = "Mean Decrease in Accuracy", y = "Variable") + xlim(0, 40)
 ```
 
 ```         
@@ -443,8 +464,15 @@ roc_plot <- ggplot(roc_data, aes(x = Specificity, y = Sensitivity, color = Model
        y = "Sensitivity (True Positive Rate)") +
   scale_color_brewer(palette = "Set1", name = "Model") +
   theme_minimal() +
-  theme(legend.position = "bottom") +
-	theme_bw(base_size = 20)
+  
+	theme_bw(base_size = 20) + 
+  theme(
+    panel.grid.major = element_blank(), # Remove major grid lines
+    panel.grid.minor = element_blank(), # Remove minor grid lines
+    axis.text = element_text(size = 14, face = "bold"), # Increase and bold axis text
+    axis.title = element_text(size = 16, face = "bold"), # Increase and bold axis titles
+  	legend.position = c(0.9,0.3)
+  )
 
 print(roc_plot)
 
